@@ -1,0 +1,2 @@
+# simple-inventory
+Rudimentäres Inventursystem
