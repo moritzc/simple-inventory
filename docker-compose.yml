@@ -1,0 +1,9 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - inventory_data:/code/data
+volumes:
+  inventory_data:

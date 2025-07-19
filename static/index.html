@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>Inventarverwaltung</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background-color: #1e1e1e;
+      color: #f0f0f0;
+      margin: 1rem;
+      max-width: 900px;
+      padding-bottom: 4rem;
+    }
+
+    h1, h2 {
+      color: #ffffff;
+    }
+
+    input, button {
+      padding: 0.5rem;
+      margin: 0.3rem 0.3rem 0.3rem 0;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+
+    input {
+      background-color: #2d2d2d;
+      color: #f0f0f0;
+      width: 100%;
+      max-width: 300px;
+    }
+
+    button {
+      background-color: #4caf50;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .danger {
+      background-color: #d9534f;
+    }
+
+    .danger:hover {
+      background-color: #c9302c;
+    }
+
+    .box, .item {
+      background-color: #2d2d2d;
+      padding: 0.7rem;
+      margin: 0.5rem 0;
+      border-left: 4px solid #4caf50;
+      border-radius: 6px;
+    }
+
+    .item button {
+      background-color: #555;
+      margin-left: 0.4rem;
+    }
+
+    .item button:hover {
+      background-color: #777;
+    }
+
+    #itemForm, #newBoxForm {
+      margin-top: 1rem;
+    }
+
+    a.box-link {
+      color: #80dfff;
+      text-decoration: none;
+    }
+
+    a.box-link:hover {
+      text-decoration: underline;
+    }
+
+    .box-actions {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 999;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+
+    @media (max-width: 600px) {
+      .box-actions, .item button {
+        flex-direction: column;
+        width: 100%;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      .item {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Verfügbare Boxen</h1>
+
+  <button onclick="loadBoxes()">🔄 Aktualisieren</button>
+
+  <div id="boxes"></div>
+
+  <div id="newBoxForm">
+    <input id="newBoxName" placeholder="Name der Box">
+    <button onclick="addBox()">Box hinzufügen</button>
+  </div>
+
+  <h2 id="boxTitle"></h2>
+
+  <div id="items"></div>
+
+  <div id="itemForm" style="display:none">
+    <input id="newItemName" placeholder="Inhalt">
+    <input id="newItemQty" type="number" min="1" value="1">
+    <button onclick="addItem()">Inhalt hinzufügen</button>
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+const API = location.origin;
+let selectedBox = null;
+let lastDeletedBox = null;
+
+function showToast(msg, duration = 3000) {
+  const toast = document.getElementById("toast");
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => {
+    toast.classList.remove("show");
+    toast.textContent = "";
+  }, duration);
+}
+
+function showUndoToast(message) {
+  const toast = document.getElementById("toast");
+  toast.innerHTML = `${message} <button style="margin-left:1rem;" onclick="undoDelete()">Rückgängig</button>`;
+  toast.classList.add("show");
+  setTimeout(() => {
+    toast.classList.remove("show");
+    toast.innerHTML = "";
+    lastDeletedBox = null;
+  }, 6000);
+}
+
+async function getJson(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+async function postJson(url, data) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(data)
+  });
+  return res.json();
+}
+
+async function del(url) {
+  await fetch(url, { method: "DELETE" });
+}
+
+async function loadBoxes() {
+  const boxes = await getJson(`${API}/boxes`);
+  const list = document.getElementById("boxes");
+  list.innerHTML = "";
+  boxes.forEach(b => {
+    const d = document.createElement("div");
+    d.className = "box";
+    d.innerHTML = `
+      <strong><a href="#box/${b.id}" class="box-link">${b.name}</a></strong>
+      (${b.items.length} Inhalt${b.items.length !== 1 ? 'e' : ''})
+      <div class="box-actions">
+        <button onclick="openBox(${b.id}, '${b.name.replace("'", "\\'")}')">Öffnen</button>
+        <button class="danger" onclick="deleteBox(${b.id}, '${b.name.replace("'", "\\'")}')">Löschen</button>
+      </div>
+    `;
+    list.appendChild(d);
+  });
+}
+
+window.addEventListener('load', () => {
+  const hash = location.hash;
+  if (hash.startsWith("#box/")) {
+    const id = parseInt(hash.split("/")[1]);
+    if (!isNaN(id)) openBox(id, "(lade...)");
+  }
+});
+
+async function openBox(id, name) {
+  selectedBox = id;
+  location.hash = `#box/${id}`;
+  document.getElementById("boxTitle").textContent = `Box: ${name}`;
+  document.getElementById("itemForm").style.display = "block";
+  loadItems();
+}
+
+async function loadItems() {
+  const box = await getJson(`${API}/boxes/${selectedBox}`);
+  const list = document.getElementById("items");
+  list.innerHTML = "";
+  box.items.forEach(it => {
+    const d = document.createElement("div");
+    d.className = "item";
+    d.innerHTML = `
+      ${it.name} (${it.quantity})
+      <button onclick="changeQty(${it.id}, 1)">+</button>
+      <button onclick="changeQty(${it.id}, -1)">−</button>
+      <button onclick="deleteItem(${it.id})">🗑️</button>
+    `;
+    list.appendChild(d);
+  });
+}
+
+async function addBox() {
+  const name = document.getElementById("newBoxName").value.trim();
+  if (!name) return;
+  await postJson(`${API}/boxes`, { name });
+  document.getElementById("newBoxName").value = "";
+  showToast(`Box "${name}" hinzugefügt`);
+  loadBoxes();
+}
+
+async function deleteBox(id, name) {
+  const confirmDelete = confirm(`Bist du sicher, dass du die Box "${name}" löschen möchtest?`);
+  if (!confirmDelete) return;
+
+  const boxData = await getJson(`${API}/boxes/${id}`);
+  await del(`${API}/boxes/${id}`);
+
+  if (selectedBox === id) {
+    selectedBox = null;
+    document.getElementById("boxTitle").textContent = "";
+    document.getElementById("items").innerHTML = "";
+    document.getElementById("itemForm").style.display = "none";
+    location.hash = "";
+  }
+
+  if (boxData.items.length > 0) {
+    lastDeletedBox = boxData;
+    showUndoToast(`Box "${name}" gelöscht.`);
+  } else {
+    lastDeletedBox = null;
+    showToast(`Box "${name}" gelöscht`);
+  }
+
+  loadBoxes();
+}
+
+async function undoDelete() {
+  if (!lastDeletedBox) return;
+  const restored = await postJson(`${API}/boxes`, { name: lastDeletedBox.name });
+  for (const item of lastDeletedBox.items) {
+    await postJson(`${API}/boxes/${restored.id}/items`, {
+      name: item.name,
+      quantity: item.quantity
+    });
+  }
+  showToast(`Box "${lastDeletedBox.name}" wiederhergestellt`);
+  lastDeletedBox = null;
+  loadBoxes();
+}
+
+async function addItem() {
+  const name = document.getElementById("newItemName").value.trim();
+  const qty = parseInt(document.getElementById("newItemQty").value);
+  if (!name || isNaN(qty)) return;
+  await postJson(`${API}/boxes/${selectedBox}/items`, { name, quantity: qty });
+  document.getElementById("newItemName").value = "";
+  document.getElementById("newItemQty").value = 1;
+  showToast(`Inhalt "${name}" hinzugefügt`);
+  loadItems();
+}
+
+async function changeQty(id, delta) {
+  await fetch(`${API}/items/${id}/quantity?delta=${delta}`, { method: "PUT" });
+  loadItems();
+}
+
+async function deleteItem(id) {
+  await del(`${API}/items/${id}`);
+  showToast("Inhalt gelöscht");
+  loadItems();
+}
+
+loadBoxes();
+</script>
+</body>
+</html>
