@@ -8,3 +8,5 @@ Per NFC-Aufkleber mit URL zur Box bespielen und direkt draufkleben und ganz einf
 # TODO
 - Suchfunktion
 - Import-Export
+
+# Schnellstart
