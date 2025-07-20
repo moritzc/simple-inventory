@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Inventory</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    .box, .item { border: 1px solid #ccc; margin: .5rem 0; padding: .5rem; }
+    .item button { margin-left: .5rem; }
+  </style>
+</head>
+<body>
+  <h1>Boxes</h1>
+  <div id="boxes"></div>
+  <input id="newBoxName" placeholder="new box name">
+  <button onclick="addBox()">Add box</button>
+
+  <h2 id="boxTitle"></h2>
+  <div id="items"></div>
+  <div id="itemForm" style="display:none">
+    <input id="newItemName" placeholder="item name">
+    <input id="newItemQty" type="number" min="1" value="1">
+    <button onclick="addItem()">Add item</button>
+  </div>
+
+<script>
+const API = location.origin;
+let selectedBox = null;
+
+async function getJson(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+async function postJson(url, data) {
+  const res = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data)});
+  return res.json();
+}
+async function del(url) {
+  await fetch(url, {method:"DELETE"});
+}
+
+async function loadBoxes() {
+  const boxes = await getJson(`${API}/boxes`);
+  const list = document.getElementById("boxes");
+  list.innerHTML = "";
+  boxes.forEach(b => {
+    const d = document.createElement("div");
+    d.className = "box";
+    d.innerHTML = `<strong>${b.name}</strong> (${b.items.length} items) <button onclick="openBox(${b.id}, '${b.name}')">open</button>`;
+    list.appendChild(d);
+  });
+}
+
+window.addEventListener('load', () => {
+  const hash = location.hash;
+  if (hash.startsWith("#box/")) {
+    const id = parseInt(hash.split("/")[1]);
+    if (!isNaN(id)) openBox(id, "(loading...)");
+  }
+});
+
+
+async function openBox(id, name) {
+  selectedBox = id;
+  document.getElementById("boxTitle").textContent = name;
+  document.getElementById("itemForm").style.display = "block";
+  loadItems();
+}
+
+async function loadItems() {
+  const box = await getJson(`${API}/boxes/${selectedBox}`);
+  const list = document.getElementById("items");
+  list.innerHTML = "";
+  box.items.forEach(it => {
+    const d = document.createElement("div");
+    d.className = "item";
+    d.innerHTML = `${it.name} (${it.quantity})
+      <button onclick="changeQty(${it.id}, 1)">+</button>
+      <button onclick="changeQty(${it.id}, -1)">-</button>
+      <button onclick="deleteItem(${it.id})">delete</button>`;
+    list.appendChild(d);
+  });
+}
+
+async function addBox() {
+  const name = document.getElementById("newBoxName").value.trim();
+  if (!name) return;
+  await postJson(`${API}/boxes`, {name});
+  document.getElementById("newBoxName").value = "";
+  loadBoxes();
+}
+
+async function addItem() {
+  const name = document.getElementById("newItemName").value.trim();
+  const qty = parseInt(document.getElementById("newItemQty").value);
+  if (!name) return;
+  await postJson(`${API}/boxes/${selectedBox}/items`, {name, quantity:qty});
+  document.getElementById("newItemName").value = "";
+  document.getElementById("newItemQty").value = 1;
+  loadItems();
+}
+
+async function changeQty(id, delta) {
+  await fetch(`${API}/items/${id}/quantity?delta=${delta}`, {method:"PUT"});
+  loadItems();
+}
+
+async function deleteItem(id) {
+  await del(`${API}/items/${id}`);
+  loadItems();
+}
+
+loadBoxes();
+</script>
+</body>
+</html>

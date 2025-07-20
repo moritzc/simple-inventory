@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Inventory{% endblock %}</title>
+  <style>
+    :root {
+      --bg: #1e1e1e;
+      --fg: #f0f0f0;
+      --accent: #4caf50;
+      --danger: #d9534f;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, sans-serif;
+      margin: 1rem auto;
+      max-width: 800px;
+      padding-bottom: 4rem;
+      font-size: 1.125rem; /* ca. 25% größer */
+    }
+
+    h1, h2, h3 {
+      color: #ffffff;
+      margin-top: 2rem;
+    }
+
+    a {
+      color: #80dfff;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    input, select, button {
+      padding: 0.6rem 0.8rem;
+      margin: 0.3rem 0.2rem 0.8rem 0;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+
+    input, select {
+      background: #2d2d2d;
+      color: var(--fg);
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #45a049;
+    }
+
+    .danger {
+      background: var(--danger);
+    }
+
+    .danger:hover {
+      background: #c9302c;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      margin-bottom: 0.8rem;
+    }
+
+    form {
+      display: inline;
+    }
+
+    input[type="number"] {
+      width: 4rem;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        font-size: 1.2rem;
+        padding: 1rem;
+      }
+
+      input, button, select {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 0.5rem;
+      }
+
+      form {
+        display: block;
+        margin-bottom: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1><a href="/">📦 Inventory</a></h1>
+  {% block content %}{% endblock %}
+</body>
+</html>

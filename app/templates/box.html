@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}
+Box: {{ box.name if box else 'Nicht gefunden' }}
+{% endblock %}
+
+{% block content %}
+  {% if box %}
+    <h2>Box: {{ box.name }}</h2>
+
+    <form method="post" action="/box/{{ box.id }}/add-item">
+      <input type="text" name="name" placeholder="Name des Inhalts" required>
+      <input type="number" name="quantity" min="1" value="1" required>
+      <button type="submit">➕ Hinzufügen</button>
+    </form>
+
+    <ul>
+      {% for item in box.items %}
+        <li>
+          {{ item.name }} ({{ item.quantity }})
+          <form method="post" action="/item/{{ item.id }}/increase" style="display:inline">
+            <button type="submit">➕</button>
+          </form>
+          <form method="post" action="/item/{{ item.id }}/decrease" style="display:inline">
+            <button type="submit">➖</button>
+          </form>
+          <form method="post" action="/item/{{ item.id }}/set" style="display:inline">
+            <input type="number" name="quantity" min="0" value="{{ item.quantity }}" style="width: 4rem;">
+            <button type="submit">✔️</button>
+          </form>
+          <form method="post" action="/item/{{ item.id }}/delete" style="display:inline" onsubmit="return confirm('Diesen Inhalt wirklich löschen?');">
+            <button type="submit">🗑️</button>
+          </form>
+        </li>
+      {% else %}
+        <li>Diese Box ist leer.</li>
+      {% endfor %}
+    </ul>
+
+    <p><a href="/">← Zurück zur Übersicht</a></p>
+  {% else %}
+    <p>Box nicht gefunden.</p>
+    <p><a href="/">← Zurück zur Übersicht</a></p>
+  {% endif %}
+{% endblock %}

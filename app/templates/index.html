@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Übersicht{% endblock %}
+
+{% block content %}
+<style>
+  @media (max-width: 600px) {
+    .box-entry {
+      display: block;
+      margin-bottom: 1.5rem;
+    }
+    .box-entry form {
+      display: inline-block;
+      margin-top: 0.5rem;
+    }
+    .box-entry button {
+      width: 100%;
+      margin-top: 0.2rem;
+    }
+  }
+</style>
+
+<form method="get">
+  <input type="text" name="q" placeholder="Suche nach Box oder Inhalt..." value="{{ q }}">
+  <button type="submit">Suchen</button>
+</form>
+
+<h2>Neue Box anlegen</h2>
+<form method="post" action="/create-box">
+  <input type="text" name="name" placeholder="Name der neuen Box" required>
+  <button type="submit">Box hinzufügen</button>
+</form>
+
+<h2>Daten exportieren</h2>
+<form method="get" action="/export">
+  <select name="format">
+    <option value="json">JSON</option>
+    <option value="csv">CSV</option>
+  </select>
+  <button type="submit">Herunterladen</button>
+</form>
+
+<h2>Daten importieren</h2>
+<form method="post" action="/import" enctype="multipart/form-data" onsubmit="return confirm('Vorhandene Daten können überschrieben werden. Fortfahren?')">
+  <input type="file" name="file" required>
+  <button type="submit">Importieren</button>
+</form>
+
+<hr>
+
+<ul>
+  {% for box in boxes %}
+    <li class="box-entry">
+      <a href="/box/{{ box.id }}">{{ box.name }}</a>
+      ({{ box.items|length }} Inhalt{{ '' if box.items|length == 1 else 'e' }})
+      <form method="post" action="/box/{{ box.id }}/delete" style="display:inline" onsubmit="return confirm('Box wirklich löschen? Alle Inhalte gehen verloren!');">
+        <button type="submit">🗑️ Löschen</button>
+      </form>
+    </li>
+  {% else %}
+    <li>Keine Boxen gefunden.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

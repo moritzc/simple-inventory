@@ -1,8 +1,8 @@
 services:
-  api:
+  inventory:
     build: .
     ports:
-      - "8000:8000"
+      - "8088:80"
     volumes:
       - inventory_data:/code/data
 volumes:
