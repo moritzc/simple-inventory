@@ -19,6 +19,6 @@ Beschreibung, Dokumentation, Testen
 
 ```docker compose up --build```
 
-Die Weboberfläche ist via http://localhost:8000/static/index.html erreichbar.
+Die Weboberfläche ist via http://localhost:8088 erreichbar.
 
-Boxen können statisch über ihre ID verlinkt werden. Beispielsweise http://localhost:8000/static/index.html#box/4
+Boxen können statisch über ihre ID verlinkt werden. Beispielsweise http://localhost:8088/box/1
