@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from datetime import datetime
 from . import models, schemas
 
 # Box
@@ -34,6 +35,16 @@ def update_item_qty(db: Session, item_id: int, delta: int):
     db_item = get_item(db, item_id)
     if db_item:
         db_item.quantity = max(0, db_item.quantity + delta)
+        db_item.last_updated = datetime.utcnow()
+        db.commit()
+        db.refresh(db_item)
+    return db_item
+
+def set_item_quantity(db: Session, item_id: int, quantity: int):
+    db_item = get_item(db, item_id)
+    if db_item:
+        db_item.quantity = max(0, quantity)
+        db_item.last_updated = datetime.utcnow()
         db.commit()
         db.refresh(db_item)
     return db_item

@@ -1,63 +1,107 @@
 {% extends "base.html" %}
-{% block title %}Übersicht{% endblock %}
+
+{% block title %}Inventar Übersicht{% endblock %}
 
 {% block content %}
-<style>
-  @media (max-width: 600px) {
-    .box-entry {
-      display: block;
-      margin-bottom: 1.5rem;
-    }
-    .box-entry form {
-      display: inline-block;
-      margin-top: 0.5rem;
-    }
-    .box-entry button {
-      width: 100%;
-      margin-top: 0.2rem;
-    }
-  }
-</style>
+<h1>Inventar Übersicht</h1>
 
-<form method="get">
-  <input type="text" name="q" placeholder="Suche nach Box oder Inhalt..." value="{{ q }}">
+<form method="get" action="/" style="margin-bottom: 1rem;">
+  <input type="text" name="q" placeholder="🔍 Suche z. B. HDMI, Kabel..." value="{{ q }}">
   <button type="submit">Suchen</button>
 </form>
 
-<h2>Neue Box anlegen</h2>
-<form method="post" action="/create-box">
-  <input type="text" name="name" placeholder="Name der neuen Box" required>
-  <button type="submit">Box hinzufügen</button>
+<form method="post" action="/create-box" style="margin-bottom: 1rem;">
+  <input type="text" name="name" placeholder="📦 Neue Box anlegen" required>
+  <button type="submit">➕ Box hinzufügen</button>
 </form>
 
-<h2>Daten exportieren</h2>
-<form method="get" action="/export">
-  <select name="format">
-    <option value="json">JSON</option>
-    <option value="csv">CSV</option>
-  </select>
-  <button type="submit">Herunterladen</button>
+<div style="margin-bottom: 1rem;">
+  <a href="/export/json">⬇️ Export als JSON</a> |
+  <a href="/export/csv">⬇️ Export als CSV</a> |
+  <form method="post" action="/import" enctype="multipart/form-data" style="display:inline;"onsubmit="return confirm('Achtung: Der gesamte aktuelle Datenbestand wird gelöscht und durch die importierten Daten ersetzt. Vorgang fortsetzen?');">
+    <input type="file" name="file" required>
+    <button type="submit">⬆️ Import</button>
 </form>
-
-<h2>Daten importieren</h2>
-<form method="post" action="/import" enctype="multipart/form-data" onsubmit="return confirm('Vorhandene Daten können überschrieben werden. Fortfahren?')">
-  <input type="file" name="file" required>
-  <button type="submit">Importieren</button>
-</form>
-
-<hr>
+</div>
 
 <ul>
-  {% for box in boxes %}
-    <li class="box-entry">
-      <a href="/box/{{ box.id }}">{{ box.name }}</a>
-      ({{ box.items|length }} Inhalt{{ '' if box.items|length == 1 else 'e' }})
-      <form method="post" action="/box/{{ box.id }}/delete" style="display:inline" onsubmit="return confirm('Box wirklich löschen? Alle Inhalte gehen verloren!');">
-        <button type="submit">🗑️ Löschen</button>
+  {% for entry in results %}
+    <li style="margin-bottom: 1rem;" id="box-{{ entry.box.id }}">
+      <strong class="box-name">
+        <a href="/box/{{ entry.box.id }}">{{ entry.box.name }}</a>
+        ({{ entry.box.items|length }} Inhalte)
+      </strong>
+      <!-- Bearbeiten-Button -->
+      <button onclick="openEditBoxDialog({{ entry.box.id }}, '{{ entry.box.name|e }}')" style="margin-left: 0.5rem;">✏️ Bearbeiten</button>
+      <!-- Löschen wie gehabt -->
+      <form method="post" action="/box/{{ entry.box.id }}/delete" onsubmit="return confirm('Box wirklich löschen? Alle Inhalte werden entfernt.')"
+            style="display:inline;">
+        <button type="submit" style="margin-left: 1rem;">🗑️ Löschen</button>
       </form>
+
+      {% if entry.matches %}
+        <ul style="margin-left: 1rem; font-style: italic; color: #ccc;">
+          {% for item in entry.matches %}
+            <li>{{ item.name }} ({{ item.quantity }})</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
     </li>
   {% else %}
     <li>Keine Boxen gefunden.</li>
   {% endfor %}
 </ul>
+
+<div id="editBoxDialog" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(30,30,30,0.8); z-index:100; align-items:center; justify-content:center;">
+  <form id="editBoxForm" style="background:#232323; color:#eee; padding:2rem; border-radius:1rem; box-shadow:0 0 1.5rem #000; min-width:280px; max-width:95vw;">
+    <h3>Box umbenennen</h3>
+    <input type="hidden" name="edit_box_id" id="edit_box_id">
+    <div style="margin-bottom:1em;">
+      <label>Neuer Name:<br>
+        <input type="text" name="edit_box_name" id="edit_box_name" required style="width:100%">
+      </label>
+    </div>
+    <div style="display:flex; gap:1em; margin-top:1em;">
+      <button type="submit">Speichern</button>
+      <button type="button" onclick="closeEditBoxDialog()">Abbrechen</button>
+    </div>
+  </form>
+</div>
+
+<script>
+function openEditBoxDialog(id, name) {
+  document.getElementById('edit_box_id').value = id;
+  document.getElementById('edit_box_name').value = name;
+  document.getElementById('editBoxDialog').style.display = "flex";
+}
+function closeEditBoxDialog() {
+  document.getElementById('editBoxDialog').style.display = "none";
+}
+
+document.getElementById('editBoxForm').onsubmit = async function(e) {
+  e.preventDefault();
+  const id = document.getElementById('edit_box_id').value;
+  const name = document.getElementById('edit_box_name').value.trim();
+  if (!name) return;
+  const form = new URLSearchParams();
+  form.append("name", name);
+  try {
+    const res = await fetch(`/box/${id}/edit`, {
+      method: "POST",
+      body: form
+    });
+    if (!res.ok) throw new Error();
+    // Update im DOM:
+    const boxDiv = document.getElementById(`box-${id}`);
+    if (boxDiv) {
+      const nameEl = boxDiv.querySelector(".box-name a");
+      if (nameEl) nameEl.textContent = name;
+    }
+    closeEditBoxDialog();
+  } catch {
+    alert("Fehler beim Umbenennen.");
+  }
+};
+</script>
+
 {% endblock %}

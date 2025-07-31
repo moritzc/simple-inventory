@@ -1,45 +1,230 @@
 {% extends "base.html" %}
-
-{% block title %}
-Box: {{ box.name if box else 'Nicht gefunden' }}
-{% endblock %}
+{% block title %}Box: {{ box.name }}{% endblock %}
 
 {% block content %}
-  {% if box %}
-    <h2>Box: {{ box.name }}</h2>
+<h1>📦 Box: {{ box.name }}</h1>
+<p><a href="/">⬅️ Zurück zur Übersicht</a></p>
 
-    <form method="post" action="/box/{{ box.id }}/add-item">
-      <input type="text" name="name" placeholder="Name des Inhalts" required>
-      <input type="number" name="quantity" min="1" value="1" required>
-      <button type="submit">➕ Hinzufügen</button>
-    </form>
+<form method="post"
+      action="/box/{{ box.id }}/add-item"
+      style="margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: .5rem;">
+  <input type="text"    name="name"     placeholder="Neuer Gegenstand" required>
+  <input type="number"  name="quantity" placeholder="Anzahl" value="1" min="1" style="width: 4rem;">
+  <input type="text"    name="category" placeholder="Kategorie (optional)">
+  <button type="submit">➕ Hinzufügen</button>
+</form>
 
-    <ul>
-      {% for item in box.items %}
-        <li>
-          {{ item.name }} ({{ item.quantity }})
-          <form method="post" action="/item/{{ item.id }}/increase" style="display:inline">
-            <button type="submit">➕</button>
-          </form>
-          <form method="post" action="/item/{{ item.id }}/decrease" style="display:inline">
-            <button type="submit">➖</button>
-          </form>
-          <form method="post" action="/item/{{ item.id }}/set" style="display:inline">
-            <input type="number" name="quantity" min="0" value="{{ item.quantity }}" style="width: 4rem;">
-            <button type="submit">✔️</button>
-          </form>
-          <form method="post" action="/item/{{ item.id }}/delete" style="display:inline" onsubmit="return confirm('Diesen Inhalt wirklich löschen?');">
-            <button type="submit">🗑️</button>
-          </form>
-        </li>
-      {% else %}
-        <li>Diese Box ist leer.</li>
-      {% endfor %}
-    </ul>
+<!-- Sortier-Optionen -->
+<div style="margin-bottom:1rem;">
+  <label for="sort-items"><b>Sortieren nach:</b></label>
+  <select id="sort-items" onchange="sortItems()" style="margin-left: .5rem;">
+    <option value="last_updated">Zuletzt geändert (neueste zuerst)</option>
+    <option value="name">Name (A–Z)</option>
+    <option value="quantity">Stückzahl (absteigend)</option>
+  </select>
+</div>
 
-    <p><a href="/">← Zurück zur Übersicht</a></p>
+<ul id="item-list" style="padding:0; list-style:none;">
+  {% for item in box.items %}
+    <li class="item-entry"
+        data-name="{{ item.name | lower }}"
+        data-quantity="{{ item.quantity }}"
+        data-updated="{{ item.last_updated.timestamp() if item.last_updated else 0 }}"
+        id="item-{{ item.id }}"
+        style="background:#2d2d2d; padding:0.8rem; margin-bottom:0.8rem;
+               border-left:4px solid #4caf50; border-radius:5px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+        <div>
+          <strong>{{ item.name }}</strong>
+          {% if item.category %}
+            <small style="color:#aaa;">({{ item.category }})</small>
+          {% endif %}
+          {% if item.last_updated %}
+            <div style="font-size:0.8rem; color:#888;">
+              🕓 {{ item.last_updated.strftime('%Y-%m-%d %H:%M') }}
+            </div>
+          {% endif %}
+        </div>
+        <div class="actions" style="display:flex; align-items:center; gap:0.5rem;">
+          <button onclick="changeQty({{ item.id }}, -1)">➖</button>
+          <input id="qty-{{ item.id }}" type="number"
+                 value="{{ item.quantity }}" min="0"
+                 style="width: 4rem;" />
+          <button onclick="changeQty({{ item.id }},  1)">➕</button>
+          <button onclick="setQty({{ item.id }})">✔️</button>
+          <button onclick="openEditDialog({{ item.id }}, '{{ item.name|e }}', '{{ item.category|default('', True)|e }}')">✏️</button>
+          <button onclick="deleteItem({{ item.id }})">🗑️</button>
+        </div>
+      </div>
+    </li>
   {% else %}
-    <p>Box nicht gefunden.</p>
-    <p><a href="/">← Zurück zur Übersicht</a></p>
-  {% endif %}
+    <li>Diese Box ist leer.</li>
+  {% endfor %}
+</ul>
+
+<div id="editDialog" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(30,30,30,0.8); z-index:99; align-items:center; justify-content:center;">
+  <form id="editForm" style="background:#232323; color:#eee; padding:2rem; border-radius:1rem; box-shadow:0 0 1.5rem #000; min-width:280px; max-width:95vw;">
+    <h3>Eintrag bearbeiten</h3>
+    <input type="hidden" name="edit_id" id="edit_id">
+    <div style="margin-bottom:1em;">
+      <label>Name:<br>
+        <input type="text" name="edit_name" id="edit_name" required style="width:100%">
+      </label>
+    </div>
+    <div style="margin-bottom:1em;">
+      <label>Kategorie:<br>
+        <input type="text" name="edit_category" id="edit_category" style="width:100%">
+      </label>
+    </div>
+    <div style="display:flex; gap:1em; margin-top:1em;">
+      <button type="submit">Speichern</button>
+      <button type="button" onclick="closeEditDialog()">Abbrechen</button>
+    </div>
+  </form>
+</div>
+
+
+<script>
+// --- Sortieren ---
+function sortItems() {
+  let select = document.getElementById('sort-items');
+  let mode = select.value;
+  let list = document.getElementById('item-list');
+  let items = Array.from(list.querySelectorAll('.item-entry'));
+
+  items.sort(function(a, b) {
+    if (mode === "name") {
+      return a.dataset.name.localeCompare(b.dataset.name, 'de');
+    } else if (mode === "quantity") {
+      return parseInt(b.dataset.quantity) - parseInt(a.dataset.quantity);
+    } else { // last_updated
+      return parseFloat(b.dataset.updated) - parseFloat(a.dataset.updated);
+    }
+  });
+
+  // Neu sortieren
+  items.forEach(item => list.appendChild(item));
+}
+document.addEventListener("DOMContentLoaded", sortItems);
+
+// --- Menge ändern ---
+async function changeQty(id, delta) {
+  const form = new URLSearchParams();
+  form.append("delta", delta);
+  try {
+    const res = await fetch(`/item/${id}/change`, {
+      method: "POST",
+      body: form
+    });
+    if (!res.ok) throw new Error();
+    const { new_quantity } = await res.json();
+    document.getElementById(`qty-${id}`).value = new_quantity;
+
+    // Update Daten-Attribute für Sortierung (z.B. letzte Änderung!)
+    const entry = document.getElementById(`item-${id}`);
+    if (entry) {
+      // Reload last_updated per AJAX? (Optional, für Perfektionisten)
+      // Für jetzt bleibt timestamp wie gehabt
+      entry.dataset.quantity = new_quantity;
+    }
+    sortItems();
+  } catch {
+    alert("Fehler beim Ändern der Menge.");
+  }
+}
+
+// --- Stückzahl exakt setzen ---
+async function setQty(id) {
+  const input = document.getElementById(`qty-${id}`);
+  const qty = parseInt(input.value);
+  if (isNaN(qty)) return;
+  const form = new URLSearchParams();
+  form.append("quantity", qty);
+  try {
+    const res = await fetch(`/item/${id}/set`, {
+      method: "POST",
+      body: form
+    });
+    if (!res.ok) throw new Error();
+    const { new_quantity } = await res.json();
+    input.value = new_quantity;
+
+    // Update Daten-Attribute für Sortierung
+    const entry = document.getElementById(`item-${id}`);
+    if (entry) {
+      entry.dataset.quantity = new_quantity;
+    }
+    sortItems();
+  } catch {
+    alert("Fehler beim Setzen der Menge.");
+  }
+}
+
+// --- Bearbeiten --- //
+function openEditDialog(id, name, category) {
+  document.getElementById('edit_id').value = id;
+  document.getElementById('edit_name').value = name;
+  document.getElementById('edit_category').value = category || "";
+  document.getElementById('editDialog').style.display = "flex";
+}
+function closeEditDialog() {
+  document.getElementById('editDialog').style.display = "none";
+}
+
+// AJAX-submit Edit-Formular
+document.getElementById('editForm').onsubmit = async function(e) {
+  e.preventDefault();
+  const id = document.getElementById('edit_id').value;
+  const name = document.getElementById('edit_name').value.trim();
+  const category = document.getElementById('edit_category').value.trim();
+  if (!name) return;
+  const form = new URLSearchParams();
+  form.append("name", name);
+  form.append("category", category);
+  try {
+    const res = await fetch(`/item/${id}/edit`, {
+      method: "POST",
+      body: form
+    });
+    if (!res.ok) throw new Error();
+    // Update im DOM:
+    const entry = document.getElementById(`item-${id}`);
+    if (entry) {
+      entry.querySelector("strong").textContent = name;
+      let catEl = entry.querySelector("small");
+      if (catEl) {
+        if (category)
+          catEl.textContent = `(${category})`;
+        else
+          catEl.remove();
+      } else if (category) {
+        // Neues small anhängen, falls vorher keins
+        let strong = entry.querySelector("strong");
+        if (strong) {
+          let sm = document.createElement("small");
+          sm.style.color = "#aaa";
+          sm.textContent = `(${category})`;
+          strong.after(document.createTextNode(" "), sm);
+        }
+      }
+    }
+    closeEditDialog();
+  } catch {
+    alert("Fehler beim Bearbeiten.");
+  }
+};
+
+
+// --- Löschen ---
+async function deleteItem(id) {
+  if (!confirm("Diesen Eintrag wirklich löschen?")) return;
+  try {
+    const res = await fetch(`/item/${id}/delete`, { method: "POST" });
+    if (!res.ok) throw new Error();
+    document.getElementById(`item-${id}`).remove();
+  } catch {
+    alert("Fehler beim Löschen.");
+  }
+}
+</script>
 {% endblock %}
