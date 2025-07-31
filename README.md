@@ -5,11 +5,9 @@ Eine minimalistische, Docker-basierte Inventarverwaltung für Kisten, Fächer & 
 
 Per NFC-Aufkleber mit URL zur Box bespielen und direkt draufkleben und ganz einfach vom Handy oder PC bearbeiten. 
 
-<img width="527" height="658" alt="image" src="https://github.com/user-attachments/assets/f36816e2-771b-4e2d-8c4d-1cf3f691a347" />
-<img width="483" height="321" alt="image" src="https://github.com/user-attachments/assets/8f5610e9-639f-4975-ac96-a685c4460ddf" />
-
-# TODO
-Beschreibung, Dokumentation, Testen
+<img width="766" height="375" alt="image" src="https://github.com/user-attachments/assets/1a103819-80fc-4c8e-b5ee-c4ebdb941ac7" />
+<img width="815" height="732" alt="image" src="https://github.com/user-attachments/assets/4eced54a-4bf2-49ab-989b-9be0359992ae" />
+<img width="342" height="383" alt="image" src="https://github.com/user-attachments/assets/5e2c5def-7886-4b74-b043-3744c52c8668" />
 
 
 # Schnellstart
