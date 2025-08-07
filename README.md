@@ -1,4 +1,4 @@
-# simple-inventory
+# simple-inventory reworked
 Rudimentäres Inventursystem
 
 Eine minimalistische, Docker-basierte Inventarverwaltung für Kisten, Fächer & Schubladen.
