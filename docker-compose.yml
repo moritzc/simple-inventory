@@ -4,6 +4,7 @@ services:
     ports:
       - "8088:80"
     volumes:
+      - ./app:/code/app
       - inventory_data:/code/data
 volumes:
   inventory_data:
