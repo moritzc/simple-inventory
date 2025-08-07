@@ -2,9 +2,9 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "beta" ]
+    branches: [ "feature/redesign " ]
   pull_request:
-    branches: [ "beta" ]
+    branches: [ "feature/redesign " ]
 
 jobs:
   build-and-push:
@@ -29,4 +29,4 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
-        tags: professorminusch/simple-inventory:beta
+        tags: professorminusch/simple-inventory:beta-jules
