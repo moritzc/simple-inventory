@@ -1,4 +1,4 @@
-# simple-inventory reworked
+# simple-inventory testing
 Rudimentäres Inventursystem
 
 Eine minimalistische, Docker-basierte Inventarverwaltung für Kisten, Fächer & Schubladen.
