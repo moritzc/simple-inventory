@@ -3,105 +3,192 @@
 {% block title %}Inventar Übersicht{% endblock %}
 
 {% block content %}
-<h1>Inventar Übersicht</h1>
+  {% if message %}
+    <div class="feedback card" role="status">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 3l9 18H3l9-18z" stroke="#22c55e" stroke-width="1.5" fill="rgba(34,197,94,0.18)" />
+        <path d="M10.5 12.5l1.8 1.8 3.7-4.3" stroke="#0f172a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span>{{ message }}</span>
+    </div>
+  {% endif %}
+  {% if error_message %}
+    <div class="feedback error card" role="alert">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="1.5" fill="rgba(239,68,68,0.15)" />
+        <path d="M12 7v6" stroke="#0f172a" stroke-width="1.5" stroke-linecap="round" />
+        <circle cx="12" cy="16.5" r="1" fill="#0f172a" />
+      </svg>
+      <span>{{ error_message }}</span>
+    </div>
+  {% endif %}
 
-<form method="get" action="/" style="margin-bottom: 1rem;">
-  <input type="text" name="q" placeholder="🔍 Suche z. B. HDMI, Kabel..." value="{{ q }}">
-  <button type="submit">Suchen</button>
-</form>
-
-<form method="post" action="/create-box" style="margin-bottom: 1rem;">
-  <input type="text" name="name" placeholder="📦 Neue Box anlegen" required>
-  <button type="submit">➕ Box hinzufügen</button>
-</form>
-
-<div style="margin-bottom: 1rem;">
-  <a href="/export/json">⬇️ Export als JSON</a> |
-  <a href="/export/csv">⬇️ Export als CSV</a> |
-  <form method="post" action="/import" enctype="multipart/form-data" style="display:inline;"onsubmit="return confirm('Achtung: Der gesamte aktuelle Datenbestand wird gelöscht und durch die importierten Daten ersetzt. Vorgang fortsetzen?');">
-    <input type="file" name="file" required>
-    <button type="submit">⬆️ Import</button>
-</form>
-</div>
-
-<ul>
-  {% for entry in results %}
-    <li style="margin-bottom: 1rem;" id="box-{{ entry.box.id }}">
-      <strong class="box-name">
-        <a href="/box/{{ entry.box.id }}">{{ entry.box.name }}</a>
-        ({{ entry.box.items|length }} Inhalte)
-      </strong>
-      <!-- Bearbeiten-Button -->
-      <button onclick="openEditBoxDialog({{ entry.box.id }}, '{{ entry.box.name|e }}')" style="margin-left: 0.5rem;">✏️ Bearbeiten</button>
-      <!-- Löschen wie gehabt -->
-      <form method="post" action="/box/{{ entry.box.id }}/delete" onsubmit="return confirm('Box wirklich löschen? Alle Inhalte werden entfernt.')"
-            style="display:inline;">
-        <button type="submit" style="margin-left: 1rem;">🗑️ Löschen</button>
+  <section class="card">
+    <h2>Inventar verwalten</h2>
+    <div class="actions-row">
+      <form method="get" action="/" class="form-block" aria-label="Inventar durchsuchen">
+        <div>
+          <label for="search-input">Suche</label>
+          <input id="search-input" type="text" name="q" placeholder="🔍 z. B. HDMI-Kabel" value="{{ q }}">
+        </div>
+        <button type="submit">Suchen</button>
       </form>
 
-      {% if entry.matches %}
-        <ul style="margin-left: 1rem; font-style: italic; color: #ccc;">
-          {% for item in entry.matches %}
-            <li>{{ item.name }} ({{ item.quantity }})</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    </li>
-  {% else %}
-    <li>Keine Boxen gefunden.</li>
-  {% endfor %}
-</ul>
+      <form method="post" action="/create-box" class="form-block" aria-label="Neue Box anlegen">
+        <div>
+          <label for="new-box-name">Neue Box</label>
+          <input id="new-box-name" type="text" name="name" placeholder="📦 Name der Box" required>
+        </div>
+        <button type="submit">Box hinzufügen</button>
+      </form>
 
-<div id="editBoxDialog" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(30,30,30,0.8); z-index:100; align-items:center; justify-content:center;">
-  <form id="editBoxForm" style="background:#232323; color:#eee; padding:2rem; border-radius:1rem; box-shadow:0 0 1.5rem #000; min-width:280px; max-width:95vw;">
-    <h3>Box umbenennen</h3>
-    <input type="hidden" name="edit_box_id" id="edit_box_id">
-    <div style="margin-bottom:1em;">
-      <label>Neuer Name:<br>
-        <input type="text" name="edit_box_name" id="edit_box_name" required style="width:100%">
-      </label>
+      <div class="form-block" aria-live="polite">
+        <label>Import &amp; Export</label>
+        <div class="inline-form">
+          <a href="/export/json" class="back-link">⬇️ JSON</a>
+          <a href="/export/csv" class="back-link">⬇️ CSV</a>
+        </div>
+        <form method="post" action="/import" enctype="multipart/form-data" onsubmit="return confirm('Achtung: Der aktuelle Bestand wird durch die importierten Daten ersetzt. Fortfahren?')">
+          <input type="file" name="file" accept="application/json" required>
+          <button type="submit">Import starten</button>
+        </form>
+      </div>
     </div>
-    <div style="display:flex; gap:1em; margin-top:1em;">
-      <button type="submit">Speichern</button>
-      <button type="button" onclick="closeEditBoxDialog()">Abbrechen</button>
-    </div>
-  </form>
-</div>
+  </section>
 
+  <section class="card" aria-label="Inventarstatus">
+    <h2>Status auf einen Blick</h2>
+    <div class="stats-grid">
+      <div class="stat-chip">
+        <span>Boxen</span>
+        <strong>{{ totals.boxes }}</strong>
+      </div>
+      <div class="stat-chip">
+        <span>Gesamtanzahl Items</span>
+        <strong>{{ totals.items }}</strong>
+      </div>
+      <div class="stat-chip">
+        <span>Angezeigte Boxen</span>
+        <strong>{{ totals.visible_boxes }}</strong>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-live="polite">
+    <h2>{% if q %}Suchergebnisse{% else %}Alle Boxen{% endif %}</h2>
+    {% if results %}
+      <ul class="box-list">
+        {% for entry in results %}
+          <li class="box-card" id="box-{{ entry.box.id }}">
+            <div>
+              <h3>
+                <span aria-hidden="true">📦</span>
+                <a class="box-name" href="/box/{{ entry.box.id }}">{{ entry.box.name }}</a>
+              </h3>
+              <p class="meta">{{ entry.box.items|length }} Inhalte gespeichert</p>
+            </div>
+            {% if entry.matches %}
+              <div>
+                <strong>Treffer:</strong>
+                <ul class="match-list">
+                  {% for item in entry.matches %}
+                    <li>{{ item.name }} ({{ item.quantity }})</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+            <div class="actions-row">
+              <button type="button" onclick="openEditBoxDialog({{ entry.box.id }}, '{{ entry.box.name|e }}')">Umbenennen</button>
+              <form method="post" action="/box/{{ entry.box.id }}/delete" onsubmit="return confirm('Box wirklich löschen? Alle Inhalte werden entfernt.')">
+                <button type="submit" class="danger">Box löschen</button>
+              </form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty-state">
+        {% if q %}
+          Keine Treffer für „{{ q }}“ gefunden.
+        {% else %}
+          Noch keine Boxen angelegt – starte mit deiner ersten Box!
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+
+  <div id="editBoxDialog" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <form id="editBoxForm" class="modal">
+      <h3>Box umbenennen</h3>
+      <input type="hidden" name="edit_box_id" id="edit_box_id">
+      <label for="edit_box_name">Neuer Name</label>
+      <input type="text" name="edit_box_name" id="edit_box_name" required>
+      <div class="button-row">
+        <button type="button" class="secondary" onclick="closeEditBoxDialog()">Abbrechen</button>
+        <button type="submit">Speichern</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+
+{% block scripts %}
 <script>
+const editBackdrop = document.getElementById('editBoxDialog');
+const editForm = document.getElementById('editBoxForm');
+const editNameInput = document.getElementById('edit_box_name');
+
 function openEditBoxDialog(id, name) {
   document.getElementById('edit_box_id').value = id;
-  document.getElementById('edit_box_name').value = name;
-  document.getElementById('editBoxDialog').style.display = "flex";
-}
-function closeEditBoxDialog() {
-  document.getElementById('editBoxDialog').style.display = "none";
+  editNameInput.value = name;
+  editBackdrop.classList.add('visible');
+  editBackdrop.setAttribute('aria-hidden', 'false');
+  editNameInput.focus();
 }
 
-document.getElementById('editBoxForm').onsubmit = async function(e) {
-  e.preventDefault();
+function closeEditBoxDialog() {
+  editBackdrop.classList.remove('visible');
+  editBackdrop.setAttribute('aria-hidden', 'true');
+  editForm.reset();
+}
+
+editBackdrop.addEventListener('click', (event) => {
+  if (event.target === editBackdrop) {
+    closeEditBoxDialog();
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && editBackdrop.classList.contains('visible')) {
+    closeEditBoxDialog();
+  }
+});
+
+editForm.onsubmit = async function (event) {
+  event.preventDefault();
   const id = document.getElementById('edit_box_id').value;
-  const name = document.getElementById('edit_box_name').value.trim();
-  if (!name) return;
+  const name = editNameInput.value.trim();
+  if (!name) {
+    return;
+  }
   const form = new URLSearchParams();
-  form.append("name", name);
+  form.append('name', name);
   try {
     const res = await fetch(`/box/${id}/edit`, {
-      method: "POST",
+      method: 'POST',
       body: form
     });
     if (!res.ok) throw new Error();
-    // Update im DOM:
-    const boxDiv = document.getElementById(`box-${id}`);
-    if (boxDiv) {
-      const nameEl = boxDiv.querySelector(".box-name a");
-      if (nameEl) nameEl.textContent = name;
+    const boxCard = document.getElementById(`box-${id}`);
+    if (boxCard) {
+      const link = boxCard.querySelector('.box-name');
+      if (link) {
+        link.textContent = name;
+      }
     }
     closeEditBoxDialog();
-  } catch {
-    alert("Fehler beim Umbenennen.");
+  } catch (error) {
+    alert('Fehler beim Umbenennen.');
   }
 };
 </script>
-
 {% endblock %}

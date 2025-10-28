@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
 class ItemBase(BaseModel):
     name: str
-    quantity: int = 1
+    quantity: int = Field(1, ge=0)
     category: Optional[str] = None
 
 class ItemCreate(ItemBase):
@@ -26,7 +26,7 @@ class BoxCreate(BoxBase):
 
 class Box(BoxBase):
     id: int
-    items: List[Item] = []
+    items: List[Item] = Field(default_factory=list)
 
     class Config:
         orm_mode = True
