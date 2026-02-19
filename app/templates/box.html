@@ -17,7 +17,7 @@
 <!-- Sortier-Optionen -->
 <div style="margin-bottom:1rem;">
   <label for="sort-items"><b>Sortieren nach:</b></label>
-  <select id="sort-items" onchange="sortItems()" style="margin-left: .5rem;">
+  <select id="sort-items" onchange="sortItems()" style="margin-left: .5rem;" aria-label="Sortieren nach">
     <option value="last_updated">Zuletzt geändert (neueste zuerst)</option>
     <option value="name">Name (A–Z)</option>
     <option value="quantity">Stückzahl (absteigend)</option>
@@ -46,14 +46,15 @@
           {% endif %}
         </div>
         <div class="actions" style="display:flex; align-items:center; gap:0.5rem;">
-          <button onclick="changeQty({{ item.id }}, -1)">➖</button>
+          <button onclick="changeQty({{ item.id }}, -1)" aria-label="Menge um 1 verringern" title="Menge um 1 verringern">➖</button>
           <input id="qty-{{ item.id }}" type="number"
                  value="{{ item.quantity }}" min="0"
-                 style="width: 4rem;" />
-          <button onclick="changeQty({{ item.id }},  1)">➕</button>
-          <button onclick="setQty({{ item.id }})">✔️</button>
-          <button onclick="openEditDialog({{ item.id }}, '{{ item.name|e }}', '{{ item.category|default('', True)|e }}')">✏️</button>
-          <button onclick="deleteItem({{ item.id }})">🗑️</button>
+                 style="width: 4rem;"
+                 aria-label="Anzahl für {{ item.name }}" />
+          <button onclick="changeQty({{ item.id }},  1)" aria-label="Menge um 1 erhöhen" title="Menge um 1 erhöhen">➕</button>
+          <button onclick="setQty({{ item.id }})" aria-label="Menge auf eingegebenen Wert setzen" title="Menge auf eingegebenen Wert setzen">✔️</button>
+          <button onclick="openEditDialog({{ item.id }}, '{{ item.name|e }}', '{{ item.category|default('', True)|e }}')" aria-label="Eintrag bearbeiten" title="Eintrag bearbeiten">✏️</button>
+          <button onclick="deleteItem({{ item.id }})" aria-label="Eintrag löschen" title="Eintrag löschen">🗑️</button>
         </div>
       </div>
     </li>
